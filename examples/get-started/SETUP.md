@@ -30,45 +30,60 @@ claude mcp remove osiris 2>/dev/null || echo "No existing MCP config"
 deactivate 2>/dev/null || true
 
 # 3. Remove virtual environment from repo root
-# Navigate to repo root first
-cd "$(git rev-parse --show-toplevel)"
+# IMPORTANT: Replace with your actual path to the osiris repo
+OSIRIS_REPO="/path/to/osiris"  # UPDATE THIS!
+
+cd "$OSIRIS_REPO"
 rm -rf .venv
 
 echo "✅ Cleanup complete - ready for fresh installation"
 ```
 
-**Note:** This is safe to run multiple times. It only removes what exists. Everything is installed in the venv (no global installations).
+**Note:** Update `OSIRIS_REPO` to your actual path. Example: `/Users/yourname/projects/osiris`
 
 ---
 
 ## Installation
 
-### Option 1: Install from Cloned Repo (Recommended for Development)
-
-Since you've cloned the Osiris repository, install in development mode:
+Since you're following this tutorial from the cloned Osiris repository:
 
 ```bash
-# From repo root
+# 1. Save the repo path (IMPORTANT - you'll need this later!)
+OSIRIS_REPO="$(pwd)"  # Run this from the osiris repo root
+echo "export OSIRIS_REPO='$OSIRIS_REPO'" >> ~/.bashrc  # Or ~/.zshrc
+echo "Saved OSIRIS_REPO=$OSIRIS_REPO"
+
+# 2. Create virtual environment
 python3.11 -m venv .venv
+
+# 3. Activate it
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# 4. Install Osiris in development mode
 pip install -e .
 ```
 
-Verify installation:
+**Validation Checkpoint 1:**
 ```bash
-osiris --version  # Should show: Osiris v0.5.x
-osiris components list | head -10  # Should list available components
+# Test installation
+osiris --version
+# ✅ Expected output: Osiris v0.5.x
+# ⏱️ Expected time: <1 second
+
+osiris components list | head -5
+# ✅ Expected output:
+# Available Components:
+# - filesystem.csv_reader (Read CSV files)
+# - filesystem.csv_writer (Write CSV files)
+# ...
+# ⏱️ Expected time: <2 seconds
+
+# ⚠️ If "osiris: command not found":
+# - Check venv is activated: which python (should show .venv)
+# - Re-run: source .venv/bin/activate
 ```
 
-### Option 2: Install from PyPI
-
-If you prefer to use the published package:
-
-```bash
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install osiris-pipeline
-```
+**Note:** For production use outside this repo, install via PyPI: `pip install osiris-pipeline`
 
 ---
 
@@ -77,16 +92,35 @@ pip install osiris-pipeline
 Navigate to the tutorial directory and initialize:
 
 ```bash
-cd examples/get-started
+cd "$OSIRIS_REPO/examples/get-started"
 osiris init
 ```
+⏱️ Expected time: <2 seconds
 
-This creates:
-- `osiris.yaml` - Project configuration with base paths
-- `osiris_connections.yaml` - Connection configuration (if not exists)
-- `.osiris/` - MCP logs and artifacts directory
+**Validation Checkpoint 2:**
+```bash
+# Verify project files were created
+ls -la osiris.yaml
+# ✅ Expected: -rw-r--r--  1 user  staff  ... osiris.yaml
 
-**Important:** `osiris init` automatically sets the `filesystem.base_path` to the current directory's absolute path. All Osiris operations (MCP logs, artifacts, pipelines) will be isolated to this location.
+ls -la osiris_connections.yaml
+# ✅ Expected: -rw-r--r--  1 user  staff  ... osiris_connections.yaml
+
+ls -la .osiris/mcp/logs/
+# ✅ Expected: audit/  cache/  telemetry/
+
+# ⚠️ If files missing:
+# - Check you're in examples/get-started: pwd
+# - Check venv is activated: which osiris
+# - Re-run: osiris init
+```
+
+**What was created:**
+- `osiris.yaml` - Project configuration with base_path set to this directory
+- `osiris_connections.yaml` - Database connections (not needed for CSV tutorial)
+- `.osiris/mcp/logs/` - MCP audit, cache, and telemetry logs
+
+**Important:** `osiris init` sets `filesystem.base_path` to the current directory's absolute path. All Osiris operations (MCP logs, artifacts, pipelines) will be isolated here.
 
 ---
 
@@ -95,58 +129,112 @@ This creates:
 Add Osiris MCP server to Claude Code with proper environment:
 
 ```bash
-# From repo root (where .venv is located)
-REPO_ROOT="$(git rev-parse --show-toplevel)"
-TUTORIAL_DIR="$REPO_ROOT/examples/get-started"
+# Using the saved OSIRIS_REPO variable
+TUTORIAL_DIR="$OSIRIS_REPO/examples/get-started"
 
 claude mcp add osiris \
-  "$REPO_ROOT/.venv/bin/python" \
+  "$OSIRIS_REPO/.venv/bin/python" \
   -m osiris.cli.mcp_entrypoint \
   --env OSIRIS_HOME="$TUTORIAL_DIR"
+```
+⏱️ Expected time: <5 seconds
+
+**Validation Checkpoint 3:**
+```bash
+# Verify MCP server is configured
+cat ~/.config/claude/mcp.json | grep -A10 "osiris"
+# ✅ Expected output showing:
+# "osiris": {
+#   "command": "/full/path/to/.venv/bin/python",
+#   "args": ["-m", "osiris.cli.mcp_entrypoint"],
+#   "env": {
+#     "OSIRIS_HOME": "/full/path/to/examples/get-started"
+#   }
+# }
+
+# Test MCP server can start
+python "$OSIRIS_REPO/.venv/bin/python" -m osiris.cli.mcp_entrypoint --selftest
+# ✅ Expected output: "Selftest completed in <1.3s"
+# ⏱️ Expected time: <2 seconds
+
+# ⚠️ If selftest fails:
+# - Check osiris.yaml exists: ls -la "$TUTORIAL_DIR/osiris.yaml"
+# - Check venv path is correct: ls -la "$OSIRIS_REPO/.venv/bin/python"
+# - Re-run: osiris init (from examples/get-started directory)
 ```
 
 **What this does:**
 - Registers Osiris as an MCP server with Claude Code
-- Sets OSIRIS_HOME to `examples/get-started/` (where osiris.yaml will live)
+- Sets OSIRIS_HOME to `examples/get-started/` (where osiris.yaml lives)
 - MCP server will look for config and secrets in that directory
 - Claude can now use Osiris MCP tools to build pipelines
 
-**Environment file (.env):**
-If you need database connections (MySQL, Supabase, etc.), create `.env` in `examples/get-started/`:
+**Environment file (.env) - Optional:**
+For database connections (MySQL, Supabase), create `.env` in `examples/get-started/`:
 ```bash
-cd examples/get-started
+cd "$OSIRIS_REPO/examples/get-started"
 cat > .env << 'EOF'
 MYSQL_PASSWORD=your-mysql-password
 SUPABASE_SERVICE_ROLE_KEY=your-key
 EOF
 ```
 
-The MCP server will automatically load `.env` from OSIRIS_HOME.
+**Note:** This CSV tutorial doesn't need `.env` - only for database examples.
 
 ---
 
-## Verification
+## Final Verification & Exit Criteria
+
+**Session 1 Exit Criteria - All must pass:**
 
 ```bash
-# 1. Check Osiris is installed
+# ✅ Checkpoint 1: Osiris installed
 osiris --version
+# Expected: Osiris v0.5.x
 
-# 2. Verify MCP server can start
-osiris mcp run --selftest  # Should complete in <1.3s
+# ✅ Checkpoint 2: MCP server works
+python -m osiris.cli.mcp_entrypoint --selftest
+# Expected: "Selftest completed in <1.3s"
 
-# 3. Restart Claude Code to load MCP configuration
-# Exit current session and start a new one
+# ✅ Checkpoint 3: MCP configured in Claude
+cat ~/.config/claude/mcp.json | grep "osiris" | wc -l
+# Expected: >0 (at least 1 line)
 
-# 4. Verify MCP tools are available (in new Claude session)
-# Run: /mcp
-# You should see "osiris" listed with tools like:
-#   - osiris_oml_schema_get
-#   - osiris_oml_validate
-#   - osiris_oml_save
-#   - osiris_discovery_run
-#   - osiris_components_list
-#   - etc.
+# ✅ Checkpoint 4: Project initialized
+ls -la "$OSIRIS_REPO/examples/get-started/osiris.yaml"
+# Expected: File exists
+
+# ✅ Checkpoint 5: MCP logs directory created
+ls -la "$OSIRIS_REPO/examples/get-started/.osiris/mcp/logs/"
+# Expected: audit/ cache/ telemetry/ directories
+
+echo "✅ All checkpoints passed! Ready for Session 2"
 ```
+
+**Final Step: Restart Claude Code**
+```bash
+# Exit any running Claude Code session
+# Then verify MCP in new session:
+cd "$OSIRIS_REPO/examples/get-started"
+claude
+
+# In Claude, run: /mcp
+# ✅ Expected: "osiris" listed with status "Connected"
+# ✅ Expected tools: guide_start, oml_schema_get, oml_validate, etc.
+```
+
+**Quick Verification Script:**
+```bash
+# Run automated verification
+./verify-session-1.sh
+
+# This checks all 5 checkpoints and provides detailed feedback
+```
+
+**If Session 1 Exit Criteria Not Met:**
+- See Troubleshooting section below
+- Re-run failed step
+- Run verification script again
 
 ---
 
@@ -206,34 +294,55 @@ which osiris  # Should show path in .venv/bin/
 python --version
 
 # If too old, use python3.11 explicitly
+cd "$OSIRIS_REPO"
 python3.11 -m venv .venv
 source .venv/bin/activate
-pip install -e .  # or pip install osiris-pipeline
+pip install -e .
 ```
 
 ### Issue: "MCP tools not available in Claude"
 
 **Solution:**
-1. Verify MCP server is registered: `cat ~/.config/claude/mcp.json` (or equivalent)
-2. Check that OSIRIS_HOME is set in the MCP config
-3. Restart Claude Code completely
-4. Run `/mcp` to check server status
-5. If not listed or OSIRIS_HOME missing, re-run the full `claude mcp add` command with --env
+```bash
+# 1. Verify MCP server is registered
+cat ~/.config/claude/mcp.json | grep -A10 "osiris"
+# Should show "osiris" configuration
+
+# 2. Check OSIRIS_HOME is set
+cat ~/.config/claude/mcp.json | grep "OSIRIS_HOME"
+# Should show: "OSIRIS_HOME": "/full/path/to/examples/get-started"
+
+# 3. Test MCP server
+python -m osiris.cli.mcp_entrypoint --selftest
+# Should pass in <1.3s
+
+# 4. Restart Claude Code completely (exit and relaunch)
+
+# 5. If still not working, reconfigure:
+cd "$OSIRIS_REPO"
+TUTORIAL_DIR="$OSIRIS_REPO/examples/get-started"
+claude mcp add osiris \
+  "$OSIRIS_REPO/.venv/bin/python" \
+  -m osiris.cli.mcp_entrypoint \
+  --env OSIRIS_HOME="$TUTORIAL_DIR"
+```
 
 ### Issue: "MCP server can't find osiris.yaml"
 
 **Solution:**
 ```bash
-# Verify OSIRIS_HOME is set correctly in MCP config
-cat ~/.config/claude/mcp.json | grep -A5 osiris
+# Verify OSIRIS_HOME points to correct directory
+cat ~/.config/claude/mcp.json | grep "OSIRIS_HOME"
+# Should show: "OSIRIS_HOME": "/full/path/to/examples/get-started"
 
-# Should show: "OSIRIS_HOME": "/full/path/to/osiris/examples/get-started"
-# If missing or wrong, reconfigure:
-REPO_ROOT="$(git rev-parse --show-toplevel)"
-claude mcp add osiris \
-  "$REPO_ROOT/.venv/bin/python" \
-  -m osiris.cli.mcp_entrypoint \
-  --env OSIRIS_HOME="$REPO_ROOT/examples/get-started"
+# Verify osiris.yaml exists there
+ls -la "$OSIRIS_REPO/examples/get-started/osiris.yaml"
+# Should show file
+
+# If missing, reinitialize:
+cd "$OSIRIS_REPO/examples/get-started"
+source "$OSIRIS_REPO/.venv/bin/activate"
+osiris init
 ```
 
 ---

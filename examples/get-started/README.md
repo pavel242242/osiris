@@ -61,12 +61,48 @@ The pipeline will:
 **Time:** 5-10 minutes
 **No CLI commands needed!**
 
-### Start Claude Code
+### ⚠️ CRITICAL: Pre-Flight Check
+
+**Before starting Claude Code, verify MCP is configured:**
 
 ```bash
-cd examples/get-started
+# 1. Check MCP server is configured
+cat ~/.config/claude/mcp.json | grep -A3 "osiris"
+# ✅ Expected: Shows osiris configuration with OSIRIS_HOME
+
+# 2. Test MCP server can start
+python -m osiris.cli.mcp_entrypoint --selftest
+# ✅ Expected: "Selftest completed in <1.3s"
+# ⏱️ Expected time: <2 seconds
+
+# ⚠️ If either fails, go back to Session 1 (SETUP.md)
+```
+
+### Start Claude Code
+
+**CRITICAL: You MUST start Claude from the correct directory!**
+
+```bash
+# Navigate to tutorial directory FIRST
+cd "$OSIRIS_REPO/examples/get-started"
+
+# Verify you're in the right place
+pwd
+# ✅ Expected: /full/path/to/osiris/examples/get-started
+
+ls osiris.yaml
+# ✅ Expected: osiris.yaml (file exists)
+
+# THEN start Claude Code
 claude
 ```
+
+**⚠️ Why this matters:** The MCP server looks for `osiris.yaml` in your current working directory first. If you start Claude from the wrong directory, MCP won't find your project configuration!
+
+**First thing to do in Claude:** Run `/mcp` command
+- ✅ Expected: "osiris" listed with status "Connected"
+- ✅ Expected tools: guide_start, oml_schema_get, oml_validate, oml_save
+- ⚠️ If not connected, exit Claude and check pre-flight steps above
 
 ### Use This Prompt:
 ```
@@ -122,7 +158,40 @@ Claude will use Osiris MCP tools to guide you through:
 
 **Step 5:** Claude calls `oml_save` to save the validated pipeline to `pipelines/category_performance.oml.yaml`
 
-**Session 2 complete!** You now have a validated OML pipeline ready to execute.
+### Session 2 Exit Criteria
+
+**Verify pipeline was created successfully:**
+
+```bash
+# Exit Claude Code and check in terminal:
+
+# ✅ Checkpoint 1: Pipeline file exists
+ls -la "$OSIRIS_REPO/examples/get-started/pipelines/category_performance.oml.yaml"
+# Expected: File exists, size > 0 bytes
+
+# ✅ Checkpoint 2: Pipeline contains valid YAML
+head -20 "$OSIRIS_REPO/examples/get-started/pipelines/category_performance.oml.yaml"
+# Expected: Shows oml_version, id, steps sections
+
+# ✅ Checkpoint 3: MCP logs show successful operations
+ls -la "$OSIRIS_REPO/examples/get-started/.osiris/mcp/logs/audit/"
+# Expected: audit-YYYY-MM-DD.jsonl file with recent timestamp
+
+echo "✅ Session 2 complete! Ready for Session 3"
+```
+
+**⚠️ If pipeline file missing:**
+- Claude may have encountered an error during oml_save
+- Check Claude's conversation for error messages
+- Re-run Session 2 with the prompt again
+
+**Quick Verification Script:**
+```bash
+# Run automated verification
+./verify-session-2.sh
+
+# This checks pipeline file, YAML structure, and MCP logs
+```
 
 **Key Point:** Everything happens through MCP tools. No CLI commands in this session!
 
@@ -153,7 +222,7 @@ P002,USB-C Hub,Electronics,75.00
 ## Session 3: Execute Pipeline (Repeatable)
 
 **Interface:** Terminal + CLI
-**Time:** 5 minutes
+**Time:** 5-10 minutes
 **Exit Claude Code for this session**
 
 Now that you have a validated OML pipeline, it's time to execute it.
@@ -161,32 +230,77 @@ Now that you have a validated OML pipeline, it's time to execute it.
 ### Step 1: Compile the Pipeline
 
 ```bash
-cd examples/get-started
-source ../../.venv/bin/activate
+cd "$OSIRIS_REPO/examples/get-started"
+source "$OSIRIS_REPO/.venv/bin/activate"
 osiris compile pipelines/category_performance.oml.yaml
 ```
+⏱️ Expected time: <5 seconds
 
-This creates a **deterministic manifest** in `build/` directory. Same OML + same data = same manifest always.
+**Expected output:**
+```
+✅ Compilation successful
+📦 Manifest saved to: build/category_performance-<hash>.manifest.yaml
+```
+
+**⚠️ If "FileNotFoundError":**
+```bash
+# Check pipeline exists
+ls -la pipelines/category_performance.oml.yaml
+# If missing, go back to Session 2
+
+# Check you're in correct directory
+pwd  # Should end with: examples/get-started
+```
+
+**Validation Checkpoint:**
+```bash
+# Verify manifest was created
+ls -la build/*.manifest.yaml
+# ✅ Expected: At least one .manifest.yaml file
+```
 
 ### Step 2: Run the Pipeline
 
 ```bash
 osiris run --last-compile --verbose
 ```
+⏱️ Expected time: <10 seconds (CSV data is small)
 
-**What happens:**
-- Reads CSV files from `data/`
-- Filters out records with missing product_id
-- Joins sales with product catalog
-- Calculates revenue (quantity × price)
-- Aggregates by category and region
-- Writes results to `category_performance.csv`
+**Expected output:**
+```
+🚀 Starting pipeline execution...
+📖 Step 1/6: Reading sales_data.csv...
+✓ Loaded 30 rows
+📖 Step 2/6: Reading product_catalog.csv...
+✓ Loaded 10 rows
+🔧 Step 3/6: Filtering records...
+✓ Removed 2 rows with missing product_id
+🔧 Step 4/6: Joining datasets...
+✓ Joined on product_id
+🔧 Step 5/6: Calculating revenue...
+✓ Added revenue column
+🔧 Step 6/6: Aggregating by category and region...
+✓ Grouped into 5 categories
+✅ Pipeline completed successfully
+```
+
+**⚠️ If execution fails:**
+```bash
+# Check data files exist
+ls -la data/*.csv
+# Should show: sales_data.csv, product_catalog.csv
+
+# View detailed error
+osiris logs list  # Get most recent run ID
+osiris logs show <run-id>  # View error details
+```
 
 ### Step 3: View Results
 
 ```bash
 cat category_performance.csv
 ```
+⏱️ Expected time: <1 second
 
 **Expected output:**
 ```csv
@@ -194,24 +308,73 @@ category,region,total_revenue,order_count,avg_order_value
 Electronics,North America,1349.88,9,149.99
 Electronics,Europe,1049.91,5,209.98
 Furniture,North America,799.96,5,159.99
-...
+Home & Garden,Europe,649.95,4,162.49
+Office Supplies,Asia,449.97,3,149.99
+```
+
+**⚠️ If file is empty or missing:**
+```bash
+# Check pipeline run succeeded
+osiris logs list
+# Status should show "completed"
+
+# Check for errors in logs
+osiris logs html --open
 ```
 
 ### Step 4: View Execution Logs (Optional)
 
 ```bash
-# List execution sessions
+# List all execution sessions
 osiris logs list
+# ✅ Expected: Shows at least one run with status "completed"
 
 # View HTML report (opens in browser)
 osiris logs html --open
 ```
+⏱️ Expected time: <3 seconds
 
-The HTML report shows:
-- Session metadata
+**The HTML report shows:**
+- Session metadata (when, duration, status)
 - Step-by-step execution trace
-- Performance metrics
-- Full event/metrics trail
+- Performance metrics (rows processed, time per step)
+- Full event/metrics trail for debugging
+
+### Session 3 Exit Criteria
+
+**All checkpoints must pass:**
+
+```bash
+# ✅ Checkpoint 1: Manifest compiled
+ls -la build/*.manifest.yaml
+# Expected: File exists
+
+# ✅ Checkpoint 2: Pipeline executed
+osiris logs list | head -1
+# Expected: Shows recent run with "completed" status
+
+# ✅ Checkpoint 3: Output file created
+ls -la category_performance.csv
+# Expected: File exists, size > 0 bytes
+
+# ✅ Checkpoint 4: Output has expected structure
+head -1 category_performance.csv
+# Expected: category,region,total_revenue,order_count,avg_order_value
+
+# ✅ Checkpoint 5: Output has data rows
+wc -l category_performance.csv
+# Expected: At least 6 lines (1 header + 5 data rows)
+
+echo "✅ Session 3 complete! You've executed your first Osiris pipeline"
+```
+
+**Quick Verification Script:**
+```bash
+# Run automated verification
+./verify-session-3.sh
+
+# This checks manifest, execution logs, output file structure, and data
+```
 
 **Session 3 complete!** You've successfully executed your first Osiris pipeline.
 
@@ -285,17 +448,32 @@ cat category_performance.csv  # View new results
 To re-run the tutorial from scratch:
 
 ```bash
-cd examples/get-started
+cd "$OSIRIS_REPO/examples/get-started"
 
 # Remove generated files (keeps sample data)
 rm -f *.csv
 rm -rf pipelines/ build/ aiop/ run_logs/ .osiris/
 rm -f osiris.yaml osiris_connections.yaml
 
-echo "✅ Ready for fresh start - run osiris init to begin Session 1"
+echo "✅ Cleanup complete!"
+echo "To restart:"
+echo "1. Run 'osiris init' to begin Session 1 Step 2"
+echo "2. MCP is still configured, no need to reconfigure"
 ```
 
-**Note:** This only removes tutorial outputs. Your Osiris installation and MCP configuration remain intact.
+**What this removes:**
+- Output CSV files
+- Generated pipelines (from Session 2)
+- Compiled manifests (from Session 3)
+- Execution logs
+- Project configuration files
+
+**What this keeps:**
+- Sample data files (data/*.csv)
+- Osiris installation (.venv)
+- MCP configuration
+
+**Note:** You can re-run Session 2 and Session 3 without cleanup. This is only for a completely fresh start.
 
 ---
 
@@ -306,14 +484,18 @@ echo "✅ Ready for fresh start - run osiris init to begin Session 1"
 **Issue: "osiris: command not found"**
 ```bash
 # Activate virtual environment
-cd "$(git rev-parse --show-toplevel)"
+cd "$OSIRIS_REPO"
 source .venv/bin/activate
 osiris --version
+
+# ⚠️ If OSIRIS_REPO not set:
+# Find your osiris repo directory and run:
+# export OSIRIS_REPO="/full/path/to/osiris"
 ```
 
 **Issue: MCP configuration failed**
 - See [SETUP.md](SETUP.md) for detailed MCP setup instructions
-- Ensure OSIRIS_HOME environment variable is set in MCP config
+- Verify OSIRIS_HOME is set: `cat ~/.config/claude/mcp.json | grep OSIRIS_HOME`
 
 ### Session 2 Issues (Build Pipeline - MCP)
 
