@@ -1,0 +1,11 @@
+product_id,product_name,category,cost_price
+P101,Wireless Mouse,Electronics,15.00
+P205,Mechanical Keyboard,Electronics,75.00
+P340,Office Chair,Furniture,120.00
+P450,Desk Lamp,Furniture,35.00
+P555,USB-C Hub,Electronics,45.00
+P678,Standing Desk,Furniture,250.00
+P721,Monitor Stand,Furniture,55.00
+P803,Webcam HD,Electronics,65.00
+P912,Ergonomic Keyboard,Electronics,95.00
+P104,Desk Organizer,Office Supplies,12.00
