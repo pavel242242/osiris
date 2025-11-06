@@ -92,17 +92,36 @@ This creates:
 
 ## Configure MCP with Claude Code
 
-Add Osiris MCP server to Claude Code:
+Add Osiris MCP server to Claude Code with proper environment:
 
 ```bash
 # From repo root (where .venv is located)
-claude mcp add osiris "$(pwd)/.venv/bin/python" -m osiris.cli.mcp_entrypoint
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+TUTORIAL_DIR="$REPO_ROOT/examples/get-started"
+
+claude mcp add osiris \
+  "$REPO_ROOT/.venv/bin/python" \
+  -m osiris.cli.mcp_entrypoint \
+  --env OSIRIS_HOME="$TUTORIAL_DIR"
 ```
 
 **What this does:**
 - Registers Osiris as an MCP server with Claude Code
+- Sets OSIRIS_HOME to `examples/get-started/` (where osiris.yaml will live)
+- MCP server will look for config and secrets in that directory
 - Claude can now use Osiris MCP tools to build pipelines
-- All operations are config-driven (using osiris.yaml)
+
+**Environment file (.env):**
+If you need database connections (MySQL, Supabase, etc.), create `.env` in `examples/get-started/`:
+```bash
+cd examples/get-started
+cat > .env << 'EOF'
+MYSQL_PASSWORD=your-mysql-password
+SUPABASE_SERVICE_ROLE_KEY=your-key
+EOF
+```
+
+The MCP server will automatically load `.env` from OSIRIS_HOME.
 
 ---
 
@@ -141,6 +160,31 @@ osiris mcp run --selftest  # Should complete in <1.3s
 
 ---
 
+## MCP Tools vs CLI Commands
+
+### Available Through MCP (for Claude Code users):
+- `guide_start` - Get workflow guidance
+- `oml_schema_get` - Get OML schema
+- `oml_validate` - Validate OML pipeline
+- `oml_save` - Save OML pipeline
+- `components_list` - List available components
+- `connections_list` - List connections
+- `connections_doctor` - Diagnose connection issues
+- `discovery_request` - Discover database schemas
+- `usecases_list` - List OML templates
+- `memory_capture` - Capture session memory
+- `aiop_list` / `aiop_show` - View execution logs
+
+### Only Through CLI (for contributors):
+- `osiris init` - Initialize project (run once during setup)
+- `osiris compile` - Compile OML to manifest
+- `osiris run` - Execute pipeline
+- `osiris logs` - View execution logs
+
+**Key principle:** Claude Code users build pipelines through MCP tools. Pipeline execution happens outside of Claude sessions.
+
+---
+
 ## Troubleshooting
 
 ### Issue: "osiris: command not found"
@@ -171,9 +215,26 @@ pip install -e .  # or pip install osiris-pipeline
 
 **Solution:**
 1. Verify MCP server is registered: `cat ~/.config/claude/mcp.json` (or equivalent)
-2. Restart Claude Code completely
-3. Run `/mcp` to check server status
-4. If not listed, re-run the `claude mcp add` command
+2. Check that OSIRIS_HOME is set in the MCP config
+3. Restart Claude Code completely
+4. Run `/mcp` to check server status
+5. If not listed or OSIRIS_HOME missing, re-run the full `claude mcp add` command with --env
+
+### Issue: "MCP server can't find osiris.yaml"
+
+**Solution:**
+```bash
+# Verify OSIRIS_HOME is set correctly in MCP config
+cat ~/.config/claude/mcp.json | grep -A5 osiris
+
+# Should show: "OSIRIS_HOME": "/full/path/to/osiris/examples/get-started"
+# If missing or wrong, reconfigure:
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+claude mcp add osiris \
+  "$REPO_ROOT/.venv/bin/python" \
+  -m osiris.cli.mcp_entrypoint \
+  --env OSIRIS_HOME="$REPO_ROOT/examples/get-started"
+```
 
 ---
 
