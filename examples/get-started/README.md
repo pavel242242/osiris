@@ -1,41 +1,43 @@
 # Get Started Tutorial: E-commerce Analytics
 
 **Level:** Beginner
-**Time:** 15-30 minutes
+**Time:** 15-30 minutes total (across 3 sessions)
 **Idempotent:** Yes - safe to run multiple times
 
-Learn to build deterministic data pipelines by describing what you want in plain English.
+Learn to build deterministic data pipelines using a 3-session workflow:
+1. **Setup & Init** (one-time) - Terminal + CLI
+2. **Build Pipeline** (repeatable) - Claude Code + MCP
+3. **Execute Pipeline** (repeatable) - Terminal + CLI
 
-
-## Prerequisites
-
-✅ **Osiris must be installed first**
-
-If you haven't installed Osiris yet, see [SETUP.md](SETUP.md).
-
-Verify installation:
-```bash
-osiris --version  # Should show v0.5.x
-```
 
 ---
 
-## Before You Start: Cleanup (Optional)
+## Session 1: Setup & Init (One-Time)
 
-If you've run this tutorial before, clean up previous outputs:
+**Interface:** Terminal + CLI
+**Time:** 5-10 minutes
+
+### Step 1: Install and Configure Osiris
+
+See [SETUP.md](SETUP.md) for complete installation instructions:
+- Install Osiris in virtual environment
+- Configure MCP server with Claude Code
+- Verify installation
+
+### Step 2: Initialize Project
 
 ```bash
 cd examples/get-started
-
-# Remove previous pipeline outputs and generated files
-rm -f *.csv
-rm -rf pipelines/ build/ aiop/ run_logs/ .osiris/
-rm -f osiris.yaml osiris_connections.yaml
-
-echo "✅ Cleanup complete - ready for fresh start!"
+source ../../.venv/bin/activate
+osiris init
 ```
 
-**Note:** This only removes tutorial outputs, not your Osiris installation or MCP configuration.
+This creates:
+- `osiris.yaml` - Project configuration
+- `osiris_connections.yaml` - Connection configuration (for databases)
+- `.osiris/` - MCP logs and artifacts directory
+
+**Session 1 is complete!** You're now ready to build pipelines with Claude.
 
 ---
 
@@ -53,16 +55,20 @@ The pipeline will:
 
 ---
 
-## Tutorial Prompt
+## Session 2: Build Pipeline (Repeatable)
 
-Start Claude Code in this directory:
+**Interface:** Claude Code + MCP only
+**Time:** 5-10 minutes
+**No CLI commands needed!**
+
+### Start Claude Code
 
 ```bash
 cd examples/get-started
 claude
 ```
 
-**Use this prompt:**
+### Use This Prompt:
 ```
 I want to build my first Osiris data pipeline using the sample data in this directory.
 
@@ -92,49 +98,33 @@ As we work, please explain:
 I want to understand the MCP-based workflow, not just see the results.
 ```
 
----
-
-## What Happens
+### What Happens in Session 2
 
 Claude will use Osiris MCP tools to guide you through:
 
-### 1. Get Workflow Guidance
-Claude calls `guide_start` MCP tool to understand the workflow and validation requirements.
+**Step 1:** Claude calls `guide_start` MCP tool to understand the workflow
 
-### 2. Understand OML Schema
-Claude calls `oml_schema_get` to get the OML v0.1.0 JSON schema and available components.
+**Step 2:** Claude calls `oml_schema_get` to get the OML v0.1.0 JSON schema
 
-### 3. Build Pipeline
-Claude creates an OML pipeline definition that:
-- Uses `filesystem.csv_reader` component to read CSV files
+**Step 3:** Claude creates an OML pipeline definition that:
+- Uses `filesystem.csv_reader` to read CSV files
 - Uses `core.filter` to remove records with missing product_id
 - Uses `core.join` to join sales with product catalog
 - Uses `core.compute` to calculate revenue (quantity × price)
 - Uses `core.aggregate` to sum by category and region
 - Uses `filesystem.csv_writer` to output results
 
-### 4. Validate Pipeline
-Claude calls `oml_validate` to check:
+**Step 4:** Claude calls `oml_validate` to check:
 - OML structure is correct
 - All required fields are present
-- Business logic is valid (e.g., primary_key for upsert modes)
+- Business logic is valid
 - Connections and components exist
 
-### 5. Save Pipeline
-Claude calls `oml_save` to save the validated OML pipeline draft to `pipelines/` directory.
+**Step 5:** Claude calls `oml_save` to save the validated pipeline to `pipelines/category_performance.oml.yaml`
 
-### 6. Result
-Creates `category_performance.csv` with results like:
+**Session 2 complete!** You now have a validated OML pipeline ready to execute.
 
-```csv
-category,region,total_revenue,order_count,avg_order_value
-Electronics,North America,1349.88,9,149.99
-Electronics,Europe,1049.91,5,209.98
-Furniture,North America,799.96,5,159.99
-...
-```
-
-**Key Point:** Everything happens through MCP tools. No direct CLI commands needed!
+**Key Point:** Everything happens through MCP tools. No CLI commands in this session!
 
 ---
 
@@ -160,6 +150,73 @@ P002,USB-C Hub,Electronics,75.00
 
 ---
 
+## Session 3: Execute Pipeline (Repeatable)
+
+**Interface:** Terminal + CLI
+**Time:** 5 minutes
+**Exit Claude Code for this session**
+
+Now that you have a validated OML pipeline, it's time to execute it.
+
+### Step 1: Compile the Pipeline
+
+```bash
+cd examples/get-started
+source ../../.venv/bin/activate
+osiris compile pipelines/category_performance.oml.yaml
+```
+
+This creates a **deterministic manifest** in `build/` directory. Same OML + same data = same manifest always.
+
+### Step 2: Run the Pipeline
+
+```bash
+osiris run --last-compile --verbose
+```
+
+**What happens:**
+- Reads CSV files from `data/`
+- Filters out records with missing product_id
+- Joins sales with product catalog
+- Calculates revenue (quantity × price)
+- Aggregates by category and region
+- Writes results to `category_performance.csv`
+
+### Step 3: View Results
+
+```bash
+cat category_performance.csv
+```
+
+**Expected output:**
+```csv
+category,region,total_revenue,order_count,avg_order_value
+Electronics,North America,1349.88,9,149.99
+Electronics,Europe,1049.91,5,209.98
+Furniture,North America,799.96,5,159.99
+...
+```
+
+### Step 4: View Execution Logs (Optional)
+
+```bash
+# List execution sessions
+osiris logs list
+
+# View HTML report (opens in browser)
+osiris logs html --open
+```
+
+The HTML report shows:
+- Session metadata
+- Step-by-step execution trace
+- Performance metrics
+- Full event/metrics trail
+
+**Session 3 complete!** You've successfully executed your first Osiris pipeline.
+
+---
+
 ## Key Concepts
 
 ### OML (Osiris Markup Language)
@@ -172,7 +229,7 @@ YAML-based declarative language defining your pipeline:
 Same input + same manifest = same output, **always**. No hidden state or randomness.
 
 ### MCP (Model Context Protocol)
-**Primary interface** for working with Osiris. Claude communicates with Osiris through MCP tools:
+**Primary interface for Session 2 (Build Pipeline).** Claude communicates with Osiris through MCP tools:
 - `guide_start` - Get workflow guidance (call this first!)
 - `oml_schema_get` - Get OML v0.1.0 JSON schema
 - `components_list` - List available extractors/processors/writers
@@ -182,110 +239,145 @@ Same input + same manifest = same output, **always**. No hidden state or randomn
 - `connections_list` - List configured connections
 - `aiop_list` / `aiop_show` - Debug previous runs
 
-**The CLI is only for contributors.** Users work through Claude Code + MCP tools.
+### 3-Session Workflow
+1. **Session 1** (Terminal + CLI): One-time setup and project initialization
+2. **Session 2** (Claude + MCP): Conversational pipeline building and validation
+3. **Session 3** (Terminal + CLI): Compile, run, and view logs
+
+**Separation of concerns:** MCP for AI-assisted design, CLI for deterministic execution.
 
 ---
 
-## Exploring Further
+## Iterating: Session 2 ↔ Session 3
 
-After the pipeline runs successfully, try:
+After running your first pipeline, you can iterate between Session 2 and Session 3:
 
-**Show me the pipeline:**
-```
-Can you show me the OML pipeline that was created?
-```
+### Modify the Pipeline (Session 2 - Claude + MCP)
 
-**Modify the analysis:**
+Start Claude Code again and ask:
 ```
-Can you modify the analysis to:
+Can you modify the category_performance pipeline to:
 1. Only include orders from January 2024
 2. Filter for orders over $50
 3. Sort by total_revenue descending
 ```
 
-**Compare results:**
-```
-How do the results differ from the original?
+Claude will:
+- Read the existing OML from `pipelines/category_performance.oml.yaml`
+- Modify it based on your requirements
+- Validate with `oml_validate`
+- Save the updated version with `oml_save`
+
+### Execute Modified Pipeline (Session 3 - Terminal + CLI)
+
+```bash
+osiris compile pipelines/category_performance.oml.yaml
+osiris run --last-compile --verbose
+cat category_performance.csv  # View new results
 ```
 
-**Use your own data:**
+**This workflow is repeatable:** Design with Claude (Session 2) → Execute in terminal (Session 3) → Repeat.
+
+---
+
+## Cleanup for Fresh Start
+
+To re-run the tutorial from scratch:
+
+```bash
+cd examples/get-started
+
+# Remove generated files (keeps sample data)
+rm -f *.csv
+rm -rf pipelines/ build/ aiop/ run_logs/ .osiris/
+rm -f osiris.yaml osiris_connections.yaml
+
+echo "✅ Ready for fresh start - run osiris init to begin Session 1"
 ```
-I have my own CSV files at [path]. Can you adapt this pipeline?
-```
+
+**Note:** This only removes tutorial outputs. Your Osiris installation and MCP configuration remain intact.
 
 ---
 
 ## Troubleshooting
 
-### Issue: "No MCP tools available" or "osiris server not found"
+### Session 1 Issues (Setup & Init)
 
-**Fix:**
-1. Verify Osiris MCP is configured:
+**Issue: "osiris: command not found"**
 ```bash
-# Check MCP configuration
-cat ~/.config/claude/mcp.json | grep osiris
-
-# If not found, reconfigure:
-cd "$(git rev-parse --show-toplevel)"
-claude mcp add osiris "$(pwd)/.venv/bin/python" -m osiris.cli.mcp_entrypoint
-```
-
-2. Restart Claude Code completely (exit and relaunch)
-3. Run `/mcp` in new session to verify "osiris" is listed
-
-### Issue: "Virtual environment not found" in MCP
-
-**Fix:**
-```bash
-# Reinstall with correct path
-cd "$(git rev-parse --show-toplevel)"
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install -e .
-
-# Reconfigure MCP with absolute path
-claude mcp add osiris "$(pwd)/.venv/bin/python" -m osiris.cli.mcp_entrypoint
-```
-
-### Issue: MCP tool errors about missing configuration
-
-**Fix:**
-```bash
-# Verify osiris.yaml exists in examples/get-started
-cd examples/get-started
-ls -la osiris.yaml
-
-# If missing, initialize:
+# Activate virtual environment
 cd "$(git rev-parse --show-toplevel)"
 source .venv/bin/activate
-cd examples/get-started
-osiris init
+osiris --version
 ```
 
-### Issue: "FileNotFoundError" for CSV files
+**Issue: MCP configuration failed**
+- See [SETUP.md](SETUP.md) for detailed MCP setup instructions
+- Ensure OSIRIS_HOME environment variable is set in MCP config
 
-**Fix:**
+### Session 2 Issues (Build Pipeline - MCP)
+
+**Issue: "No MCP tools available" or "osiris server not found"**
+1. Run `/mcp` in Claude Code to check server status
+2. Verify MCP configuration:
 ```bash
-# Verify data files exist
+cat ~/.config/claude/mcp.json | grep -A10 osiris
+# Should show OSIRIS_HOME pointing to examples/get-started
+```
+3. Restart Claude Code completely
+4. If still not working, see [SETUP.md](SETUP.md)
+
+**Issue: "MCP can't find osiris.yaml"**
+- Ensure you ran `osiris init` in Session 1
+- Check OSIRIS_HOME in MCP config points to correct directory
+- Verify `osiris.yaml` exists in `examples/get-started/`
+
+**Issue: "FileNotFoundError" for CSV files**
+```bash
 cd examples/get-started
-ls -la data/
-# Should show: sales_data.csv, product_catalog.csv
+ls -la data/  # Should show sales_data.csv, product_catalog.csv
 ```
 
-If problems persist, run cleanup and reinstall: see [SETUP.md](SETUP.md)
+### Session 3 Issues (Execute Pipeline - CLI)
+
+**Issue: "Pipeline not found" when compiling**
+```bash
+# Check pipeline was saved in Session 2
+ls -la pipelines/
+# Should show: category_performance.oml.yaml
+```
+
+**Issue: "No such file or directory" when running**
+- Ensure you ran `osiris compile` before `osiris run`
+- Check `build/` directory exists and contains compiled manifest
+
+**Issue: No output CSV created**
+- Check run logs: `osiris logs list`
+- View detailed logs: `osiris logs html --open`
+- Verify data files exist in `data/` directory
 
 ---
 
 ## Next Steps
 
-🎉 **Congratulations!** You've built your first Osiris pipeline.
+🎉 **Congratulations!** You've completed the 3-session workflow!
+
+**What you've learned:**
+- ✅ Session 1: Setup and project initialization (one-time)
+- ✅ Session 2: AI-assisted pipeline building with MCP (repeatable)
+- ✅ Session 3: Deterministic execution with CLI (repeatable)
 
 **What to try next:**
 
-1. **Modify the pipeline** - Change aggregations, add filters, try different outputs
-2. **Use your own data** - Replace the CSV files with your own
-3. **Connect to databases** - See `docs/quickstart.md` for MySQL examples
+1. **Iterate the workflow** - Modify pipeline in Session 2, execute in Session 3, repeat
+2. **Use your own data** - Replace CSV files and rebuild pipeline with Claude
+3. **Connect to databases** - See `docs/quickstart.md` for MySQL/Supabase examples
 4. **Explore other examples** - Check other tutorials in `examples/`
+
+**Remember the workflow:**
+```
+Session 1 (one-time) → Session 2 (design) ↔ Session 3 (execute)
+```
 
 ---
 
@@ -297,4 +389,9 @@ If problems persist, run cleanup and reinstall: see [SETUP.md](SETUP.md)
 
 ---
 
-**Remember:** This tutorial is **idempotent**. You can run it multiple times safely. Just clean up the outputs first if you want a fresh start!
+**Remember:** This tutorial follows a **3-session workflow**:
+1. **Session 1** (one-time): Setup & Init - Terminal + CLI
+2. **Session 2** (repeatable): Build Pipeline - Claude Code + MCP
+3. **Session 3** (repeatable): Execute Pipeline - Terminal + CLI
+
+Each session is **idempotent** - safe to run multiple times. See "Cleanup for Fresh Start" to reset.
