@@ -6,7 +6,7 @@ A 10‑minute happy‑path to run your first pipeline locally and (optionally) i
 
 ## 1) Prerequisites
 
-- **Python 3.10+**
+- **Python 3.11+**
 - **Git**
 - **MySQL** database you can read from (host/user/password)
 - (Optional) **E2B** account if you want to try cloud sandbox runs
