@@ -87,12 +87,14 @@ Required pipeline steps:
 Claude will guide you through:
 
 1. **Install Osiris**
+
+   Since you cloned the repo, install in development mode:
    ```bash
    cd ../..  # Go to repo root
-   pip install -e .  # Install in dev mode
-   # or
-   pip install osiris-pipeline  # From PyPI
+   pip install -e .  # Install from cloned repo
    ```
+
+   (Alternative: If you didn't clone the repo, just run `pip install osiris-pipeline`)
 
 2. **Initialize Project**
    ```bash
