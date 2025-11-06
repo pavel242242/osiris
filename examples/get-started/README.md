@@ -16,7 +16,15 @@ cd osiris/examples/get-started
 claude
 ```
 
-Then use the prompt: **"Show me how to install and use osiris"**
+Then use the prompt:
+```
+I want to learn Osiris by building my first data pipeline following the tutorial in examples/get-started/README.md
+
+Please read this README and guide me through:
+1. Installing Osiris
+2. Building the category performance pipeline
+3. Explaining MCP tools and OML as we work
+```
 
 ---
 
