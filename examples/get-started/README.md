@@ -6,25 +6,6 @@
 
 Learn to build deterministic data pipelines by describing what you want in plain English.
 
----
-
-## 🧪 Testing Version
-
-**Clone and setup:**
-```bash
-git clone -b examples/get-started-tutorial https://github.com/pavel242242/osiris.git
-cd osiris
-
-# Session 1: Install Osiris
-source .venv/bin/activate || (python3.11 -m venv .venv && source .venv/bin/activate)
-pip install -e .
-
-# Session 2: Run tutorial
-cd examples/get-started
-claude
-```
-
----
 
 ## Prerequisites
 
@@ -44,12 +25,17 @@ osiris --version  # Should show v0.5.x
 If you've run this tutorial before, clean up previous outputs:
 
 ```bash
-# Remove previous pipeline outputs
-rm -f *.csv *.yaml
+cd examples/get-started
+
+# Remove previous pipeline outputs and generated files
+rm -f *.csv
 rm -rf pipelines/ build/ aiop/ run_logs/ .osiris/
+rm -f osiris.yaml osiris_connections.yaml
 
 echo "✅ Cleanup complete - ready for fresh start!"
 ```
+
+**Note:** This only removes tutorial outputs, not your Osiris installation or MCP configuration.
 
 ---
 
@@ -86,52 +72,58 @@ Sample data:
 
 Business question: Which product categories perform best by region?
 
-Please help me:
-1. Initialize an Osiris project in this directory (osiris init)
+Please use Osiris MCP tools to help me:
+1. Get the OML schema (use guide_start and oml_schema_get MCP tools)
 2. Build a pipeline that:
+   - Reads CSV files from data/ directory
    - Cleans data (remove records with missing product_id)
    - Joins sales with product catalog on product_id
    - Calculates revenue (quantity * price)
    - Aggregates by category and region: total_revenue, order_count, avg_order_value
    - Outputs to category_performance.csv
+3. Validate the OML (use oml_validate MCP tool)
+4. Save the pipeline (use oml_save MCP tool)
 
 As we work, please explain:
 - Which Osiris MCP tools you're using at each step
 - What the OML pipeline structure looks like
-- How deterministic compilation works
+- How the validation works
 
-I want to understand the process, not just see the results.
+I want to understand the MCP-based workflow, not just see the results.
 ```
 
 ---
 
 ## What Happens
 
-Claude will guide you through:
+Claude will use Osiris MCP tools to guide you through:
 
-### 1. Initialize Project
-```bash
-osiris init
-```
+### 1. Get Workflow Guidance
+Claude calls `guide_start` MCP tool to understand the workflow and validation requirements.
 
-Creates:
-- `osiris.yaml` - Project configuration
-- `pipelines/` - Where OML files are saved
-- `build/` - Compiled manifests
-- `aiop/` - AI Operation Packages
-- `run_logs/` - Execution logs
+### 2. Understand OML Schema
+Claude calls `oml_schema_get` to get the OML v0.1.0 JSON schema and available components.
 
-### 2. Build Pipeline
+### 3. Build Pipeline
+Claude creates an OML pipeline definition that:
+- Uses `filesystem.csv_reader` component to read CSV files
+- Uses `core.filter` to remove records with missing product_id
+- Uses `core.join` to join sales with product catalog
+- Uses `core.compute` to calculate revenue (quantity × price)
+- Uses `core.aggregate` to sum by category and region
+- Uses `filesystem.csv_writer` to output results
 
-Claude uses Osiris MCP tools to:
-- Discover data schemas (`osiris_discovery_run`)
-- Get OML syntax guidance (`osiris_oml_schema_get`)
-- List available components (`osiris_components_list`)
-- Validate the pipeline (`osiris_oml_validate`)
-- Save the pipeline (`osiris_oml_save`)
+### 4. Validate Pipeline
+Claude calls `oml_validate` to check:
+- OML structure is correct
+- All required fields are present
+- Business logic is valid (e.g., primary_key for upsert modes)
+- Connections and components exist
 
-### 3. Execute Pipeline
+### 5. Save Pipeline
+Claude calls `oml_save` to save the validated OML pipeline draft to `pipelines/` directory.
 
+### 6. Result
 Creates `category_performance.csv` with results like:
 
 ```csv
@@ -141,6 +133,8 @@ Electronics,Europe,1049.91,5,209.98
 Furniture,North America,799.96,5,159.99
 ...
 ```
+
+**Key Point:** Everything happens through MCP tools. No direct CLI commands needed!
 
 ---
 
@@ -178,12 +172,17 @@ YAML-based declarative language defining your pipeline:
 Same input + same manifest = same output, **always**. No hidden state or randomness.
 
 ### MCP (Model Context Protocol)
-How Claude communicates with Osiris to build pipelines. Claude calls MCP tools like:
-- `osiris_components_list` - List available extractors/processors/writers
-- `osiris_oml_schema_get` - Get OML syntax documentation
-- `osiris_oml_validate` - Validate pipeline syntax
-- `osiris_oml_save` - Save pipeline definition
-- `osiris_discovery_run` - Analyze data sources
+**Primary interface** for working with Osiris. Claude communicates with Osiris through MCP tools:
+- `guide_start` - Get workflow guidance (call this first!)
+- `oml_schema_get` - Get OML v0.1.0 JSON schema
+- `components_list` - List available extractors/processors/writers
+- `oml_validate` - Validate pipeline syntax and business logic
+- `oml_save` - Save validated pipeline definition
+- `discovery_request` - Analyze database schemas (for database sources)
+- `connections_list` - List configured connections
+- `aiop_list` / `aiop_show` - Debug previous runs
+
+**The CLI is only for contributors.** Users work through Claude Code + MCP tools.
 
 ---
 
@@ -218,37 +217,62 @@ I have my own CSV files at [path]. Can you adapt this pipeline?
 
 ## Troubleshooting
 
-### Issue: "osiris: command not found"
+### Issue: "No MCP tools available" or "osiris server not found"
+
+**Fix:**
+1. Verify Osiris MCP is configured:
+```bash
+# Check MCP configuration
+cat ~/.config/claude/mcp.json | grep osiris
+
+# If not found, reconfigure:
+cd "$(git rev-parse --show-toplevel)"
+claude mcp add osiris "$(pwd)/.venv/bin/python" -m osiris.cli.mcp_entrypoint
+```
+
+2. Restart Claude Code completely (exit and relaunch)
+3. Run `/mcp` in new session to verify "osiris" is listed
+
+### Issue: "Virtual environment not found" in MCP
 
 **Fix:**
 ```bash
-# Activate virtual environment
-source ../../.venv/bin/activate
+# Reinstall with correct path
+cd "$(git rev-parse --show-toplevel)"
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -e .
 
-# Verify installation
-osiris --version
+# Reconfigure MCP with absolute path
+claude mcp add osiris "$(pwd)/.venv/bin/python" -m osiris.cli.mcp_entrypoint
 ```
 
-If still not working, run setup: see [SETUP.md](SETUP.md)
-
-### Issue: "No MCP tools available"
+### Issue: MCP tool errors about missing configuration
 
 **Fix:**
-1. Verify Osiris is installed: `osiris --version`
-2. Restart Claude Code
-3. Run `/mcp` to check MCP server status
+```bash
+# Verify osiris.yaml exists in examples/get-started
+cd examples/get-started
+ls -la osiris.yaml
+
+# If missing, initialize:
+cd "$(git rev-parse --show-toplevel)"
+source .venv/bin/activate
+cd examples/get-started
+osiris init
+```
 
 ### Issue: "FileNotFoundError" for CSV files
 
 **Fix:**
 ```bash
 # Verify data files exist
+cd examples/get-started
 ls -la data/
 # Should show: sales_data.csv, product_catalog.csv
-
-# If missing, check you're in examples/get-started directory
-pwd  # Should end with: examples/get-started
 ```
+
+If problems persist, run cleanup and reinstall: see [SETUP.md](SETUP.md)
 
 ---
 
