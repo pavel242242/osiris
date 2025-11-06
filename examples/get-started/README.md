@@ -143,7 +143,7 @@ Claude will use Osiris MCP tools to guide you through:
 **Step 2:** Claude calls `oml_schema_get` to get the OML v0.1.0 JSON schema
 
 **Step 3:** Claude creates an OML pipeline definition that:
-- Uses `filesystem.csv_reader` to read CSV files
+- Uses `filesystem.csv_extractor` to read CSV files
 - Uses `core.filter` to remove records with missing product_id
 - Uses `core.join` to join sales with product catalog
 - Uses `core.compute` to calculate revenue (quantity × price)

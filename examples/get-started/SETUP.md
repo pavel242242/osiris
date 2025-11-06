@@ -73,7 +73,7 @@ osiris --version
 osiris components list | head -5
 # ✅ Expected output:
 # Available Components:
-# - filesystem.csv_reader (Read CSV files)
+# - filesystem.csv_extractor (Read CSV files)
 # - filesystem.csv_writer (Write CSV files)
 # ...
 # ⏱️ Expected time: <2 seconds
