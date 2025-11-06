@@ -7,6 +7,19 @@ Learn to build deterministic data pipelines by describing what you want in plain
 
 ---
 
+## 🧪 Testing Version
+
+**Clone the test branch:**
+```bash
+git clone -b examples/get-started-tutorial https://github.com/pavel242242/osiris.git
+cd osiris/examples/get-started
+claude
+```
+
+Then use the prompt: **"Show me how to install and use osiris"**
+
+---
+
 ## What You'll Build
 
 A data pipeline that answers: **"Which product categories are performing best by region?"**
