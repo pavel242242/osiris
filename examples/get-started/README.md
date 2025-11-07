@@ -63,19 +63,29 @@ The pipeline will:
 
 ### ⚠️ CRITICAL: Pre-Flight Check
 
-**Before starting Claude Code, verify MCP is configured:**
+**Before starting Claude Code, complete these checks in order:**
 
 ```bash
-# 1. Check MCP server is configured
-cat ~/.config/claude/mcp.json | grep -A3 "osiris"
+# STEP 1: Verify You're In The Correct Directory
+cd "$OSIRIS_REPO/examples/get-started"
+pwd  # ✅ Must end with: /examples/get-started
+
+ls osiris.yaml
+# ✅ Must show: osiris.yaml (file exists)
+
+# ⚠️ If osiris.yaml missing, you're in the wrong directory!
+# The MCP server looks for osiris.yaml in your current directory.
+
+# STEP 2: Check MCP server is configured
+cat ~/.claude.json | grep -A3 "osiris"
 # ✅ Expected: Shows osiris configuration with OSIRIS_HOME
 
-# 2. Test MCP server can start
+# STEP 3: Test MCP server can start
 python -m osiris.cli.mcp_entrypoint --selftest
-# ✅ Expected: "Selftest completed in <1.3s"
+# ✅ Expected: "Self-test completed in <1.3s"
 # ⏱️ Expected time: <2 seconds
 
-# ⚠️ If either fails, go back to Session 1 (SETUP.md)
+# ⚠️ If any step fails, go back to Session 1 (SETUP.md)
 ```
 
 ### Start Claude Code
@@ -495,7 +505,7 @@ osiris --version
 
 **Issue: MCP configuration failed**
 - See [SETUP.md](SETUP.md) for detailed MCP setup instructions
-- Verify OSIRIS_HOME is set: `cat ~/.config/claude/mcp.json | grep OSIRIS_HOME`
+- Verify OSIRIS_HOME is set: `cat ~/.claude.json | grep OSIRIS_HOME`
 
 ### Session 2 Issues (Build Pipeline - MCP)
 
@@ -503,7 +513,7 @@ osiris --version
 1. Run `/mcp` in Claude Code to check server status
 2. Verify MCP configuration:
 ```bash
-cat ~/.config/claude/mcp.json | grep -A10 osiris
+cat ~/.claude.json | grep -A10 osiris
 # Should show OSIRIS_HOME pointing to examples/get-started
 ```
 3. Restart Claude Code completely

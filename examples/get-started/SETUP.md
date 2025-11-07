@@ -142,7 +142,7 @@ claude mcp add osiris \
 **Validation Checkpoint 3:**
 ```bash
 # Verify MCP server is configured
-cat ~/.config/claude/mcp.json | grep -A10 "osiris"
+cat ~/.claude.json | grep -A10 "osiris"
 # ✅ Expected output showing:
 # "osiris": {
 #   "command": "/full/path/to/.venv/bin/python",
@@ -154,7 +154,7 @@ cat ~/.config/claude/mcp.json | grep -A10 "osiris"
 
 # Test MCP server can start
 python "$OSIRIS_REPO/.venv/bin/python" -m osiris.cli.mcp_entrypoint --selftest
-# ✅ Expected output: "Selftest completed in <1.3s"
+# ✅ Expected output: "Self-test completed in <1.3s"
 # ⏱️ Expected time: <2 seconds
 
 # ⚠️ If selftest fails:
@@ -194,10 +194,10 @@ osiris --version
 
 # ✅ Checkpoint 2: MCP server works
 python -m osiris.cli.mcp_entrypoint --selftest
-# Expected: "Selftest completed in <1.3s"
+# Expected: "Self-test completed in <1.3s"
 
 # ✅ Checkpoint 3: MCP configured in Claude
-cat ~/.config/claude/mcp.json | grep "osiris" | wc -l
+cat ~/.claude.json | grep "osiris" | wc -l
 # Expected: >0 (at least 1 line)
 
 # ✅ Checkpoint 4: Project initialized
@@ -305,11 +305,11 @@ pip install -e .
 **Solution:**
 ```bash
 # 1. Verify MCP server is registered
-cat ~/.config/claude/mcp.json | grep -A10 "osiris"
+cat ~/.claude.json | grep -A10 "osiris"
 # Should show "osiris" configuration
 
 # 2. Check OSIRIS_HOME is set
-cat ~/.config/claude/mcp.json | grep "OSIRIS_HOME"
+cat ~/.claude.json | grep "OSIRIS_HOME"
 # Should show: "OSIRIS_HOME": "/full/path/to/examples/get-started"
 
 # 3. Test MCP server
@@ -332,7 +332,7 @@ claude mcp add osiris \
 **Solution:**
 ```bash
 # Verify OSIRIS_HOME points to correct directory
-cat ~/.config/claude/mcp.json | grep "OSIRIS_HOME"
+cat ~/.claude.json | grep "OSIRIS_HOME"
 # Should show: "OSIRIS_HOME": "/full/path/to/examples/get-started"
 
 # Verify osiris.yaml exists there

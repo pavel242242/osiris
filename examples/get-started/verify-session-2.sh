@@ -16,6 +16,20 @@ NC='\033[0m' # No Color
 
 FAILED=0
 
+# Pre-check: Verify we're in the correct directory
+echo "Pre-Check: Directory Verification"
+echo "----------------------------------"
+if [ ! -f "osiris.yaml" ]; then
+    echo -e "${RED}❌ ERROR: osiris.yaml not found!${NC}"
+    echo "   You must run this script from: examples/get-started"
+    echo "   Current directory: $(pwd)"
+    echo ""
+    echo "   Fix: cd \$OSIRIS_REPO/examples/get-started"
+    exit 1
+fi
+echo -e "${GREEN}✅ osiris.yaml found - correct directory${NC}"
+echo ""
+
 echo "Checkpoint 1: Pipeline File Exists"
 echo "-----------------------------------"
 if [ -f "pipelines/category_performance.oml.yaml" ]; then

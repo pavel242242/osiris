@@ -47,7 +47,7 @@ echo ""
 
 echo "Checkpoint 2: MCP Server Selftest"
 echo "----------------------------------"
-if python -m osiris.cli.mcp_entrypoint --selftest 2>&1 | grep -q "Selftest completed"; then
+if python -m osiris.cli.mcp_entrypoint --selftest 2>&1 | grep -q "Self-test completed"; then
     echo -e "${GREEN}✅ MCP server selftest passed${NC}"
 else
     echo -e "${RED}❌ MCP server selftest failed${NC}"
@@ -58,13 +58,13 @@ echo ""
 
 echo "Checkpoint 3: MCP Configuration"
 echo "--------------------------------"
-if [ -f ~/.config/claude/mcp.json ]; then
-    if grep -q "osiris" ~/.config/claude/mcp.json; then
+if [ -f ~/.claude.json ]; then
+    if grep -q "osiris" ~/.claude.json; then
         echo -e "${GREEN}✅ MCP server configured in Claude${NC}"
 
         # Check OSIRIS_HOME is set
-        if grep -q "OSIRIS_HOME" ~/.config/claude/mcp.json; then
-            OSIRIS_HOME_PATH=$(grep -A2 "OSIRIS_HOME" ~/.config/claude/mcp.json | grep -v "OSIRIS_HOME" | tr -d ' ",')
+        if grep -q "OSIRIS_HOME" ~/.claude.json; then
+            OSIRIS_HOME_PATH=$(grep -A2 "OSIRIS_HOME" ~/.claude.json | grep -v "OSIRIS_HOME" | tr -d ' ",')
             echo "   OSIRIS_HOME: $OSIRIS_HOME_PATH"
         else
             echo -e "${YELLOW}⚠️  OSIRIS_HOME not found in MCP config${NC}"
